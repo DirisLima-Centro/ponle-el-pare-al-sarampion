@@ -6,8 +6,22 @@
 <title>Ponle el Pare al Sarampión</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-html,body{width:100%;height:100%;overflow:hidden;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#e9fbff,#dff6ff)}
-body{padding:10px}
+html,body{
+width:100%;
+height:100%;
+overflow:hidden;
+font-family:Arial,Helvetica,sans-serif;
+background:
+radial-gradient(circle at 10% 20%, rgba(32,184,208,.12) 0%, transparent 22%),
+radial-gradient(circle at 85% 15%, rgba(255,79,160,.10) 0%, transparent 25%),
+radial-gradient(circle at 50% 90%, rgba(182,39,216,.08) 0%, transparent 28%),
+linear-gradient(180deg,#e9fbff,#dff6ff)
+}
+
+body{
+padding:10px;
+position:relative;
+}
 .desktop-layout{width:100%;height:100dvh;display:grid;grid-template-columns:minmax(220px,310px) auto minmax(220px,310px);gap:22px;align-items:center;justify-content:center}
 .side-art{height:min(92dvh,780px);border-radius:30px;padding:24px 22px;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.72));box-shadow:0 15px 45px rgba(6,76,134,.16);border:2px solid rgba(32,184,208,.18);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
 .side-art:before{content:"";position:absolute;width:190px;height:190px;border-radius:50%;background:rgba(255,79,160,.16);right:-70px;top:-50px}
@@ -33,9 +47,145 @@ body{padding:10px}
  .game-wrap{display:flex;align-items:center;justify-content:center}
  #game{width:min(100vw - 20px,430px);height:min(100dvh - 20px,780px)}
 }
+
+/* =========================
+FONDO GAMER / MÉDICO
+========================= */
+
+.bg-deco{
+position:fixed;
+inset:0;
+overflow:hidden;
+pointer-events:none;
+z-index:0;
+}
+
+.bg-virus{
+position:absolute;
+opacity:.06;
+filter:blur(.3px);
+animation:floatVirus 18s ease-in-out infinite;
+}
+
+.virus-a{
+width:180px;
+left:2%;
+top:10%;
+}
+
+.virus-b{
+width:140px;
+right:5%;
+top:32%;
+animation-delay:4s;
+}
+
+.virus-c{
+width:200px;
+left:10%;
+bottom:6%;
+animation-delay:8s;
+}
+
+.bg-shield{
+position:absolute;
+opacity:.05;
+animation:pulseShield 12s ease-in-out infinite;
+}
+
+.shield-a{
+width:230px;
+right:4%;
+bottom:8%;
+}
+
+.shield-b{
+width:170px;
+left:5%;
+top:58%;
+animation-delay:4s;
+
+}
+
+.bg-cross{
+position:absolute;
+color:#20b8d0;
+opacity:.04;
+font:900 110px Arial;
+animation:rotateCross 30s linear infinite;
+}
+
+.cross-a{
+left:42%;
+top:14%;
+}
+
+.cross-b{
+right:12%;
+bottom:16%;
+font-size:150px;
+}
+
+.bg-particles{
+position:absolute;
+inset:0;
+background-image:
+radial-gradient(rgba(32,184,208,.18) 2px, transparent 2px),
+radial-gradient(rgba(255,79,160,.12) 2px, transparent 2px);
+background-size:120px 120px;
+background-position:0 0,60px 60px;
+opacity:.18;
+animation:moveParticles 30s linear infinite;
+}
+
+@keyframes floatVirus{
+0%{transform:translateY(0px) rotate(0deg)}
+50%{transform:translateY(-18px) rotate(8deg)}
+100%{transform:translateY(0px) rotate(0deg)}
+}
+
+@keyframes pulseShield{
+0%{transform:scale(1)}
+50%{transform:scale(1.08)}
+100%{transform:scale(1)}
+}
+
+@keyframes rotateCross{
+from{transform:rotate(0deg)}
+to{transform:rotate(360deg)}
+}
+
+@keyframes moveParticles{
+from{transform:translateY(0px)}
+to{transform:translateY(-120px)}
+}
+
+.desktop-layout,
+.help{
+position:relative;
+z-index:2;
+}
+
 </style>
 </head>
 <body>
+
+<div class="bg-deco">
+
+<img src="./v-1.png" class="bg-virus virus-a">
+<img src="./v-2.png" class="bg-virus virus-b">
+<img src="./v3.png" class="bg-virus virus-c">
+
+<img src="./icon2.png" class="bg-shield shield-a">
+<img src="./icon2.png" class="bg-shield shield-b">
+
+<div class="bg-cross cross-a">✚</div>
+<div class="bg-cross cross-b">✚</div>
+
+<div class="bg-particles"></div>
+
+</div>
+
 <div class="help">DIRIS Lima Centro · Ponle el Pare al Sarampión</div>
 
 <div class="desktop-layout">
@@ -706,6 +856,7 @@ const vacuY=378+Math.cos(t/420)*7;
  ctx.font='900 12px Arial';
  ctx.fillText('HAZ TU MEJOR PUNTAJE',W/2,missionY+21);
  ctx.fillStyle='#ffcf33';
+
  ctx.font='900 14px Arial';
  ctx.fillText('Y COMPARTE TU RETO',W/2,missionY+40);
 
