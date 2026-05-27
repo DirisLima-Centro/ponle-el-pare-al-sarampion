@@ -7,14 +7,50 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{width:100%;height:100%;overflow:hidden;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(180deg,#e9fbff,#dff6ff)}
-body{display:flex;align-items:center;justify-content:center;padding:10px}
+body{padding:10px}
+.desktop-layout{width:100%;height:100dvh;display:grid;grid-template-columns:minmax(220px,310px) auto minmax(220px,310px);gap:22px;align-items:center;justify-content:center}
+.side-art{height:min(92dvh,780px);border-radius:30px;padding:24px 22px;background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(255,255,255,.72));box-shadow:0 15px 45px rgba(6,76,134,.16);border:2px solid rgba(32,184,208,.18);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between}
+.side-art:before{content:"";position:absolute;width:190px;height:190px;border-radius:50%;background:rgba(255,79,160,.16);right:-70px;top:-50px}
+.side-art:after{content:"";position:absolute;width:220px;height:220px;border-radius:50%;background:rgba(32,184,208,.18);left:-90px;bottom:-80px}
+.side-content{position:relative;z-index:1;text-align:center}
+.side-promo{width:100%;height:100%;object-fit:cover;border-radius:24px;display:block}
+.side-kicker{display:inline-block;background:#ff4fa0;color:#fff;font:900 12px Arial;padding:8px 14px;border-radius:999px;margin-bottom:16px;box-shadow:0 8px 18px rgba(255,79,160,.25)}
+.side-title{color:#064c86;font:900 30px/1.05 Arial;margin-bottom:14px}
+.side-text{color:#124366;font:800 16px/1.35 Arial;margin-bottom:14px}
+.side-list{display:grid;gap:10px;margin-top:16px}
+.side-item{background:rgba(255,255,255,.86);border:1px solid rgba(32,184,208,.22);border-radius:16px;padding:12px;color:#064c86;font:800 14px/1.25 Arial}
+.side-big{font:900 42px Arial;color:#ff4fa0;text-shadow:0 4px 0 rgba(255,207,51,.55);margin:14px 0}
+.side-badge{background:linear-gradient(90deg,#20b8d0,#1976d2);color:#fff;border-radius:22px;padding:18px 14px;font:900 18px/1.2 Arial;box-shadow:0 12px 26px rgba(25,118,210,.25)}
+.side-small{font:800 13px/1.3 Arial;color:#1976d2;margin-top:12px}
+.game-wrap{display:flex;align-items:center;justify-content:center}
 #game{display:block;background:#fff;touch-action:none;width:min(100vw - 20px,430px);height:min(100dvh - 20px,780px);aspect-ratio:430/780;border-radius:24px;box-shadow:0 15px 50px rgba(0,0,0,.25);object-fit:contain}
 .help{position:fixed;top:0;left:50%;transform:translateX(-50%);background:#fff;color:#064c86;font:700 12px Arial;padding:5px 14px;border-radius:0 0 12px 12px;box-shadow:0 8px 22px rgba(0,0,0,.08);z-index:2}
+@media(max-width:1024px){
+ body{display:flex;align-items:center;justify-content:center;padding:10px}
+ .desktop-layout{display:block;width:auto;height:auto}
+ .side-art{display:none}
+ .game-wrap{display:flex;align-items:center;justify-content:center}
+ #game{width:min(100vw - 20px,430px);height:min(100dvh - 20px,780px)}
+}
 </style>
 </head>
 <body>
 <div class="help">DIRIS Lima Centro · Ponle el Pare al Sarampión</div>
-<canvas id="game" width="430" height="780"></canvas>
+
+<div class="desktop-layout">
+  <aside class="side-art left-art" style="padding:0;background:none;border:none;box-shadow:none">
+    <img src="./Popup-Saram-1.jpg" class="side-promo">
+  </aside>
+
+  <main class="game-wrap">
+    <canvas id="game" width="430" height="780"></canvas>
+  </main>
+
+  <aside class="side-art right-art" style="padding:0;background:none;border:none;box-shadow:none">
+    <img src="./Popup-Saram-2.jpg" class="side-promo">
+  </aside>
+</div>
+
 <audio id="bgMusic" src="./musica-sarampion.mp3" preload="auto" loop></audio>
 <script>
 const canvas=document.getElementById('game');
@@ -27,7 +63,7 @@ const W=canvas.width,H=canvas.height;
 // musica-sarampion.mp3
 // ===============================
 const bgMusic = document.getElementById('bgMusic');
-bgMusic.volume = 0.8;
+bgMusic.volume = 0.55;
 
 let audioCtx = null;
 let audioUnlocked = false;
@@ -47,7 +83,7 @@ async function startMusic(){
 
   try{
     bgMusic.muted = false;
-    bgMusic.volume = 0.8;
+    bgMusic.volume = 0.55;
 
     // Solo reproduce si está pausada, así no se reinicia ni se corta.
     if(bgMusic.paused){
@@ -75,10 +111,19 @@ function lowerMusic(){
 }
 
 function sfx(type){
-  if(!audioUnlocked) return;
   ensureAudio();
 
+  if(!audioCtx) return;
+
   const now = audioCtx.currentTime;
+
+  // Pequeño ducking: baja la música por un instante para que el efecto se escuche.
+  try{
+    const originalVol = 0.55;
+    bgMusic.volume = 0.32;
+    setTimeout(()=>{ if(state==='playing') bgMusic.volume = originalVol; }, 140);
+  }catch(e){}
+
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
   const filter = audioCtx.createBiquadFilter();
@@ -87,14 +132,25 @@ function sfx(type){
   filter.connect(gain);
   gain.connect(audioCtx.destination);
 
-  let f1=440, f2=220, dur=.15, wave='sine', vol=.10, filterFreq=1200;
+  let f1=440, f2=220, dur=.15, wave='sine', vol=.22, filterFreq=1600;
 
-  if(type==='shoot'){ f1=760; f2=520; dur=.08; wave='square'; vol=.04; filterFreq=1600; }
-  if(type==='hit'){ f1=180; f2=80; dur=.12; wave='sawtooth'; vol=.07; filterFreq=900; }
-  if(type==='power'){ f1=520; f2=980; dur=.22; wave='triangle'; vol=.10; filterFreq=2200; }
-  if(type==='boss'){ f1=95; f2=55; dur=.45; wave='sawtooth'; vol=.14; filterFreq=700; }
-  if(type==='win'){ f1=660; f2=1040; dur=.50; wave='triangle'; vol=.12; filterFreq=2400; }
-  if(type==='lose'){ f1=240; f2=95; dur=.50; wave='sawtooth'; vol=.11; filterFreq=900; }
+  // Disparo: más agudo y fuerte
+  if(type==='shoot'){ f1=980; f2=520; dur=.10; wave='square'; vol=.20; filterFreq=2600; }
+
+  // Impacto: golpe corto
+  if(type==='hit'){ f1=220; f2=70; dur=.16; wave='sawtooth'; vol=.24; filterFreq=1200; }
+
+  // Power-up vacuna
+  if(type==='power'){ f1=560; f2=1180; dur=.28; wave='triangle'; vol=.25; filterFreq=2800; }
+
+  // Jefe / virus grande
+  if(type==='boss'){ f1=110; f2=45; dur=.50; wave='sawtooth'; vol=.28; filterFreq=900; }
+
+  // Ganar
+  if(type==='win'){ f1=720; f2=1280; dur=.55; wave='triangle'; vol=.26; filterFreq=3000; }
+
+  // Perder
+  if(type==='lose'){ f1=260; f2=80; dur=.55; wave='sawtooth'; vol=.26; filterFreq=900; }
 
   osc.type = wave;
   filter.type = 'lowpass';
@@ -108,7 +164,7 @@ function sfx(type){
   gain.gain.exponentialRampToValueAtTime(0.0001, now+dur);
 
   osc.start(now);
-  osc.stop(now+dur+.03);
+  osc.stop(now+dur+.04);
 }
 
 function sfxWin(){
@@ -135,7 +191,7 @@ const img={
   D1:load('D1.png'),D2:load('D2.png'),D3:load('D3.png'),D4:load('D4.png'),
   f1:load('f1.png'),f2:load('f2.png'),f3:load('f3.png'),h1:load('h1.png'),j1:load('j1.png'),
   jugar:load('btn-mision2.png'),logoMinsa:load('logo-minsa-2.png'),logo:load('logo-saram.png'),mapa:load('mapa-diris-lc.png'),j2:load('j2.png'),
-  popup1:load('popup1.png'),popup2:load('popup2.png'),popup3:load('popup3.png'),popup4:load('popup4.png'),popup5:load('popup5.png'),
+  popup1:load('popup1.jpg'),popup2:load('popup2.jpg'),popup3:load('popup3.jpg'),popup4:load('popup4.jpg'),popup5:load('popup5.jpg'),
   pre1:load('pre1.png'),v1:load('v-1.png'),v2:load('v-2.png'),v3:load('v3.png'),vacu:load('vacu.png'),volver:load('volver_jugar.png'),x2:load('x2.png')
 };
 const popupImgs=[img.popup1,img.popup2,img.popup3,img.popup4,img.popup5];
@@ -207,6 +263,7 @@ startMusic();
 sfx('power');
 }
 function endGame(){
+if(state==='end')return;
 state='end';
 scoreAnim=0;
 boss=null;
@@ -292,8 +349,8 @@ function update(dt){
      }
    }
  }
- for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];if(Math.hypot(player.x-e.x,player.y-e.y)<80){enemies.splice(i,1);if(e.type!=='power'&&shield<=0){player.hp--;sfx('hit');addFloat('¡CUIDADO!',player.x,player.y,'#ff4fa0',24)}else{shield=6;x2Timer=7;powerMode=6;player.hp=Math.min(5,player.hp+1);sfx('power');addFloat('VACUNA SPR',player.x,player.y,'#20b8d0',24);burst(player.x,player.y,'#20b8d0',18);burst(player.x,player.y,'#ff4fa0',12)}if(player.hp<=0)endGame()}}
- if(timeLeft<=0)endGame()
+ for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];if(Math.hypot(player.x-e.x,player.y-e.y)<80){enemies.splice(i,1);if(e.type!=='power'&&shield<=0){player.hp--;sfx('hit');addFloat('¡CUIDADO!',player.x,player.y,'#ff4fa0',24)}else{shield=6;x2Timer=7;powerMode=6;player.hp=Math.min(5,player.hp+1);sfx('power');addFloat('VACUNA SPR',player.x,player.y,'#20b8d0',24);burst(player.x,player.y,'#20b8d0',18);burst(player.x,player.y,'#ff4fa0',12)}if(player.hp<=0){player.hp=0;endGame();return;}}}
+ if(timeLeft<=0){endGame();return;}
 }
 
 function drawBase(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#e9fbff');g.addColorStop(.6,'#fff');g.addColorStop(1,'#dff6ff');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.fillStyle='#1bb6cf';ctx.beginPath();ctx.arc(-10,45,100,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ff4fa0';ctx.beginPath();ctx.arc(W+10,25,110,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(190,50,220,.95)';ctx.fillRect(0,H-78,W,78);ctx.fillStyle='rgba(255,255,255,.95)';rr(16,108,W-32,H-198,24);ctx.fill()}
@@ -743,6 +800,7 @@ function drawMap(){
  ctx.fillStyle='#20b8d0';
  rr(64,654,302*((distritoIndex+1)/14),12,7);ctx.fill();
 
+
  ctx.fillStyle='#064c86';
  ctx.font='900 18px Arial';
  ctx.fillText('Nivel '+(distritoIndex+1)+'/14',W/2,690);
@@ -866,7 +924,7 @@ function drawPlaying(){
  ctx.fillStyle='rgba(255,255,255,.94)';rr(lifeX,lifeY,lifeW,lifeH,18);ctx.fill();
  ctx.strokeStyle='#ff4fa0';ctx.lineWidth=2;rr(lifeX,lifeY,lifeW,lifeH,18);ctx.stroke();
  ctx.fillStyle='#2c006d';ctx.font='bold 11px Arial';ctx.textAlign='center';ctx.fillText('Vidas',lifeX+lifeW/2,lifeY+17);
- ctx.font='bold 22px Arial';ctx.fillStyle='#ff4fa0';ctx.shadowColor='rgba(255,79,160,.35)';ctx.shadowBlur=4;ctx.fillText('❤'.repeat(player.hp),lifeX+lifeW/2,lifeY+43);ctx.shadowBlur=0;ctx.textAlign='left';
+ ctx.font='bold 22px Arial';ctx.fillStyle='#ff4fa0';ctx.shadowColor='rgba(255,79,160,.35)';ctx.shadowBlur=4;ctx.fillText('❤'.repeat(Math.max(0,player.hp)),lifeX+lifeW/2,lifeY+43);ctx.shadowBlur=0;ctx.textAlign='left';
 
  // Poderes pequeños debajo del logo, solo si están activos
  if(x2Timer>0){
@@ -1047,6 +1105,7 @@ function drawEnd(){
  ctx.fillText('PUNTAJE FINAL',W/2,356);
 
  ctx.fillStyle='#ffcf33';
+
  ctx.font='900 48px Arial';
  ctx.shadowColor='rgba(6,76,134,.18)';
  ctx.shadowBlur=5;
