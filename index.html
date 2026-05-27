@@ -26,6 +26,7 @@ body{padding:10px}
 #game{display:block;background:#fff;touch-action:none;width:min(100vw - 20px,430px);height:min(100dvh - 20px,780px);aspect-ratio:430/780;border-radius:24px;box-shadow:0 15px 50px rgba(0,0,0,.25);object-fit:contain}
 .help{position:fixed;top:0;left:50%;transform:translateX(-50%);background:#fff;color:#064c86;font:700 12px Arial;padding:5px 14px;border-radius:0 0 12px 12px;box-shadow:0 8px 22px rgba(0,0,0,.08);z-index:2}
 @media(max-width:1024px){
+ .help{display:none}
  body{display:flex;align-items:center;justify-content:center;padding:10px}
  .desktop-layout{display:block;width:auto;height:auto}
  .side-art{display:none}
@@ -204,6 +205,15 @@ let popup=null,boss=null,bossSpawned=false,bossDefeated=false,keys={};
 let shareMsgTimer=0;
 let score=0,level=1,distritoIndex=0,wonDistricts=0,timeLeft=60,shield=0,x2Timer=0,powerMode=0,comboTimer=0,comboCount=0,scoreAnim=0,lastShot=0,last=performance.now();
 
+const eduCards=[
+  {score:500,img:img.popup1,title:'CARTA SPR DESBLOQUEADA',text:'Alerta de sarampión por casos importados. Reconoce los síntomas y sigue jugando.'},
+  {score:1500,img:img.popup2,title:'CARTA SPR DESBLOQUEADA',text:'Recuerda: la primera dosis es a los 12 meses y la segunda a los 18 meses.'},
+  {score:3000,img:img.popup3,title:'CARTA SPR DESBLOQUEADA',text:'¡Tus vacunas son tu superpoder! Completa la protección contra el sarampión.'},
+  {score:4500,img:img.popup4,title:'CARTA SPR DESBLOQUEADA',text:'El sarampión es muy contagioso. Vacunar salva vidas.'},
+  {score:6000,img:img.popup5,title:'CARTA SPR DESBLOQUEADA',text:'Protege a los que más amas. Acude al establecimiento de salud más cercano.'}
+];
+let eduUnlocked={};
+
 function rand(a,b){return a+Math.random()*(b-a)}
 function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}
@@ -245,8 +255,34 @@ async function shareScore(){
   }catch(e){}
 }
 
+function checkEducationalPopup(){
+  if(state!=='playing' || popup) return;
 
-function clearGame(){bullets=[];enemies=[];particles=[];floats=[];hitEffects=[];shotEffects=[];boss=null;bossSpawned=false;bossDefeated=false;popup=null;shield=0;x2Timer=0;powerMode=0;comboTimer=0;comboCount=0;shareMsgTimer=0;player.x=W/2;player.targetX=W/2;last=performance.now()}
+  for(const card of eduCards){
+    if(score>=card.score && !eduUnlocked[card.score]){
+      eduUnlocked[card.score]=true;
+
+      // Bonus por desbloquear carta educativa
+      score+=100;
+
+      popup={
+        type:'edu',
+        title:card.title,
+        text:card.text+'  +100 BONUS SPR',
+        btn:'SEGUIR JUGANDO',
+        image:card.img
+      };
+
+      sfx('power');
+      burst(W/2,310,'#ffcf33',24);
+      addFloat('+100 BONUS SPR',W/2,320,'#ffcf33',26);
+      return;
+    }
+  }
+}
+
+
+function clearGame(){bullets=[];enemies=[];particles=[];floats=[];hitEffects=[];shotEffects=[];boss=null;bossSpawned=false;bossDefeated=false;popup=null;eduUnlocked={};shield=0;x2Timer=0;powerMode=0;comboTimer=0;comboCount=0;shareMsgTimer=0;player.x=W/2;player.targetX=W/2;last=performance.now()}
 function resetAll(){state='cover';score=0;timeLeft=60;level=1;distritoIndex=0;wonDistricts=0;player.hp=3;stopMusic();clearGame()}
 function startGame(){
 score=0;
@@ -316,7 +352,7 @@ function update(dt){
  if(timeLeft<=18&&!bossSpawned&&!bossDefeated)spawnBoss();if(Math.random()<.03)spawnEnemy();
  bullets.forEach(b=>{b.trail.push({x:b.x,y:b.y,life:.22,max:.22});if(b.trail.length>8)b.trail.shift();b.y+=b.vy*dt;b.spin+=dt*10;b.trail=b.trail.filter(p=>(p.life-=dt)>0)});bullets=bullets.filter(b=>b.y>-80);
  enemies.forEach(e=>{e.x+=e.vx*dt;e.y+=e.vy*dt;if(e.x<30||e.x>W-30)e.vx*=-1});
- for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(Math.hypot(b.x-e.x,b.y-e.y)<42){bullets.splice(i,1);enemies.splice(j,1);comboTimer=2.2;comboCount++;let pts=x2Timer>0?40:20;if(comboCount>=5)pts*=2;score+=pts;addFloat('+'+pts,e.x,e.y,'#ffcf33',24);if(comboCount>=5)addFloat('RÁFAGA VACUNA',W/2,170,'#ff4fa0',30);sfx('hit');hitEffects.push({x:e.x,y:e.y,life:.42,max:.42});burst(e.x,e.y,'#ff4fa0',14);break}}}
+ for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(Math.hypot(b.x-e.x,b.y-e.y)<42){bullets.splice(i,1);enemies.splice(j,1);comboTimer=2.2;comboCount++;let pts=x2Timer>0?40:20;if(comboCount>=5)pts*=2;score+=pts;checkEducationalPopup();addFloat('+'+pts,e.x,e.y,'#ffcf33',24);if(comboCount>=5)addFloat('RÁFAGA VACUNA',W/2,170,'#ff4fa0',30);sfx('hit');hitEffects.push({x:e.x,y:e.y,life:.42,max:.42});burst(e.x,e.y,'#ff4fa0',14);break}}}
  if(boss){
    boss.phase+=dt;
    boss.intro=Math.max(0,boss.intro-dt*1.8);
@@ -344,10 +380,12 @@ function update(dt){
        bullets.splice(i,1);
        boss.hp--;
        score+=5;
+       checkEducationalPopup();
        hitEffects.push({x:b.x,y:b.y,life:.35,max:.35});
        burst(b.x,b.y,'#ff4fa0',8);
        if(boss.hp<=0){
          score+=500;
+         checkEducationalPopup();
          bossDefeated=true;
          sfxWin();
          addFloat('¡BROTE DETENIDO!',W/2,210,'#ffcf33',28);
@@ -1241,7 +1279,148 @@ function downloadResult(){
 
 }
 
-function drawPopup(){if(!popup)return;ctx.fillStyle='rgba(0,0,0,.42)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';rr(45,112,W-90,560,26);ctx.fill();ctx.textAlign='center';ctx.fillStyle='#ff4fa0';ctx.font='bold 28px Arial';ctx.fillText(popup.title,W/2,158);if(popup.image&&popup.image.complete&&popup.image.naturalWidth){const maxW=210,maxH=330,ratio=popup.image.naturalWidth/popup.image.naturalHeight;let dw=maxW,dh=dw/ratio;if(dh>maxH){dh=maxH;dw=dh*ratio}ctx.drawImage(popup.image,W/2-dw/2,178,dw,dh)}ctx.fillStyle='#124366';ctx.font='18px Arial';wrapText(popup.text,W/2,535,300,24);button(W/2-105,590,210,54,popup.btn,'#064c86');ctx.textAlign='left'}
+function drawPopup(){
+ if(!popup)return;
+
+ const t=performance.now();
+
+ ctx.fillStyle='rgba(0,0,0,.52)';
+ ctx.fillRect(0,0,W,H);
+
+ // Contenedor principal
+ const cardX=38, cardY=76, cardW=W-76, cardH=620;
+
+ ctx.save();
+ ctx.shadowColor='rgba(6,76,134,.30)';
+ ctx.shadowBlur=24;
+ ctx.shadowOffsetY=10;
+ ctx.fillStyle='rgba(255,255,255,.985)';
+ rr(cardX,cardY,cardW,cardH,28);
+ ctx.fill();
+ ctx.restore();
+
+ ctx.strokeStyle='rgba(32,184,208,.75)';
+ ctx.lineWidth=3;
+ rr(cardX,cardY,cardW,cardH,28);
+ ctx.stroke();
+
+ ctx.textAlign='center';
+
+ // Header compacto
+ const headX=64, headY=96, headW=W-128, headH=44;
+ const hg=ctx.createLinearGradient(headX,headY,headX+headW,headY+headH);
+ hg.addColorStop(0,'#ff4fa0');
+ hg.addColorStop(.55,'#b627d8');
+ hg.addColorStop(1,'#20b8d0');
+
+ ctx.save();
+ ctx.shadowColor='rgba(255,79,160,.18)';
+ ctx.shadowBlur=10;
+ ctx.fillStyle=hg;
+ rr(headX,headY,headW,headH,19);
+ ctx.fill();
+ ctx.restore();
+
+ ctx.fillStyle='#fff';
+ ctx.font='900 14px Arial';
+ ctx.fillText('CARTA SPR DESBLOQUEADA',W/2,124);
+
+ // Confetti con más aire
+ for(let i=0;i<16;i++){
+   const x=72+((i*24+t*.025)%(W-144));
+   const y=158+Math.sin(t/260+i)*5;
+   ctx.globalAlpha=.55;
+   ctx.fillStyle=i%2?'#ffcf33':'#20b8d0';
+   ctx.beginPath();
+   ctx.arc(x,y,2.3+(i%2),0,Math.PI*2);
+   ctx.fill();
+ }
+ ctx.globalAlpha=1;
+
+ // Flyer con tamaño fijo y centrado para todas las cartas
+ let flyerBottom=0;
+ if(popup.image&&popup.image.complete&&popup.image.naturalWidth){
+   const maxW=246;
+   const maxH=385;
+   const ratio=popup.image.naturalWidth/popup.image.naturalHeight;
+   let dw=maxW;
+   let dh=dw/ratio;
+   if(dh>maxH){
+     dh=maxH;
+     dw=dh*ratio;
+   }
+
+   const fx=W/2-dw/2;
+   const fy=174;
+   flyerBottom=fy+dh;
+
+   ctx.save();
+   ctx.shadowColor='rgba(0,0,0,.22)';
+   ctx.shadowBlur=16;
+   ctx.shadowOffsetY=7;
+   ctx.fillStyle='#fff';
+   rr(fx-5,fy-5,dw+10,dh+10,16);
+   ctx.fill();
+   ctx.restore();
+
+   ctx.drawImage(popup.image,fx,fy,dw,dh);
+ }
+
+ // Mensaje inferior: máximo 2 líneas visibles, sin tocar el botón
+ const msgX=58, msgY=590, msgW=W-116, msgH=58;
+
+ ctx.save();
+ ctx.fillStyle='rgba(233,251,255,.96)';
+ rr(msgX,msgY,msgW,msgH,18);
+ ctx.fill();
+ ctx.restore();
+
+ ctx.fillStyle='#064c86';
+ ctx.font='900 12.5px Arial';
+
+ let cleanText = (popup.text||'').replace('  +100 BONUS SPR','');
+ const msgByScore = {
+   500:'Reconoce los síntomas y sigue jugando. +100 BONUS SPR',
+   1500:'Primera dosis: 12 meses. Segunda dosis: 18 meses. +100 BONUS SPR',
+   3000:'Tus vacunas son tu superpoder. Completa tu protección. +100 BONUS SPR',
+   4500:'El sarampión es contagioso. Vacunar salva vidas. +100 BONUS SPR',
+   6000:'Protege a los que más amas. Completa sus vacunas. +100 BONUS SPR'
+ };
+
+ // Detecta la carta desbloqueada por imagen/texto y usa texto corto
+ if(popup.image===img.popup1) cleanText=msgByScore[500];
+ if(popup.image===img.popup2) cleanText=msgByScore[1500];
+ if(popup.image===img.popup3) cleanText=msgByScore[3000];
+ if(popup.image===img.popup4) cleanText=msgByScore[4500];
+ if(popup.image===img.popup5) cleanText=msgByScore[6000];
+
+ wrapText(cleanText,W/2,msgY+22,msgW-30,16);
+
+ // Botón continuar fijo y separado
+ const bx=82,by=660,bw=266,bh=42;
+ ctx.save();
+ ctx.shadowColor='rgba(255,79,160,.35)';
+ ctx.shadowBlur=13;
+ ctx.shadowOffsetY=4;
+ const bg=ctx.createLinearGradient(bx,by,bx+bw,by+bh);
+ bg.addColorStop(0,'#ff4fa0');
+ bg.addColorStop(1,'#1976d2');
+ ctx.fillStyle=bg;
+ rr(bx,by,bw,bh,21);
+ ctx.fill();
+ ctx.restore();
+
+ ctx.strokeStyle='rgba(255,255,255,.95)';
+ ctx.lineWidth=3;
+ rr(bx+2,by+2,bw-4,bh-4,19);
+ ctx.stroke();
+
+ ctx.fillStyle='#fff';
+ ctx.font='900 16px Arial';
+ ctx.fillText('SEGUIR JUGANDO',W/2,by+28);
+
+ ctx.textAlign='left';
+}
 function render(){ctx.clearRect(0,0,W,H);if(state==='cover')drawCover();else if(state==='playing')drawPlaying();else drawEnd();drawPopup()}
 function loop(ts){
   const dt=Math.min(.033,(ts-last)/1000);
@@ -1263,7 +1442,7 @@ function press(x,y){
  ensureAudio();
  
  if(popup){
-   if(x>W/2-105&&x<W/2+105&&y>590&&y<644)popup=null;
+   if(x>82&&x<348&&y>660&&y<702)popup=null;
    return;
  }
  if(state==='cover'){
