@@ -338,6 +338,7 @@ function update(dt){
    }
 
    for(let i=bullets.length-1;i>=0;i--){
+     if(!boss) break;
      const b=bullets[i];
      if(Math.hypot(b.x-boss.x,b.y-boss.y)<95){
        bullets.splice(i,1);
@@ -345,7 +346,15 @@ function update(dt){
        score+=5;
        hitEffects.push({x:b.x,y:b.y,life:.35,max:.35});
        burst(b.x,b.y,'#ff4fa0',8);
-       if(boss.hp<=0){score+=500;boss=null;bossDefeated=true;sfxWin();addFloat('¡BROTE DETENIDO!',W/2,210,'#ffcf33',28);burst(W/2,220,'#ffcf33',28)}
+       if(boss.hp<=0){
+         score+=500;
+         bossDefeated=true;
+         sfxWin();
+         addFloat('¡BROTE DETENIDO!',W/2,210,'#ffcf33',28);
+         burst(W/2,220,'#ffcf33',28);
+         boss=null;
+         break;
+       }
      }
    }
  }
@@ -1234,7 +1243,20 @@ function downloadResult(){
 
 function drawPopup(){if(!popup)return;ctx.fillStyle='rgba(0,0,0,.42)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#fff';rr(45,112,W-90,560,26);ctx.fill();ctx.textAlign='center';ctx.fillStyle='#ff4fa0';ctx.font='bold 28px Arial';ctx.fillText(popup.title,W/2,158);if(popup.image&&popup.image.complete&&popup.image.naturalWidth){const maxW=210,maxH=330,ratio=popup.image.naturalWidth/popup.image.naturalHeight;let dw=maxW,dh=dw/ratio;if(dh>maxH){dh=maxH;dw=dh*ratio}ctx.drawImage(popup.image,W/2-dw/2,178,dw,dh)}ctx.fillStyle='#124366';ctx.font='18px Arial';wrapText(popup.text,W/2,535,300,24);button(W/2-105,590,210,54,popup.btn,'#064c86');ctx.textAlign='left'}
 function render(){ctx.clearRect(0,0,W,H);if(state==='cover')drawCover();else if(state==='playing')drawPlaying();else drawEnd();drawPopup()}
-function loop(ts){const dt=Math.min(.033,(ts-last)/1000);last=ts;update(dt);render();requestAnimationFrame(loop)}requestAnimationFrame(loop);
+function loop(ts){
+  const dt=Math.min(.033,(ts-last)/1000);
+  last=ts;
+  try{
+    update(dt);
+    render();
+  }catch(err){
+    console.log('Error controlado en loop:', err);
+    state='end';
+    render();
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
 
 function getPos(e){const r=canvas.getBoundingClientRect(),t=e.touches?e.touches[0]:e;return{x:(t.clientX-r.left)*(W/r.width),y:(t.clientY-r.top)*(H/r.height)}}
 function press(x,y){
