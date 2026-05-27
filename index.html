@@ -203,6 +203,7 @@ let player={x:W/2,y:H-160,w:135,h:135,targetX:W/2,hp:3};
 let bullets=[],enemies=[],particles=[],floats=[],hitEffects=[],shotEffects=[];
 let popup=null,boss=null,bossSpawned=false,bossDefeated=false,keys={};
 let shareMsgTimer=0;
+let difficultyShown={};
 let score=0,level=1,distritoIndex=0,wonDistricts=0,timeLeft=60,shield=0,x2Timer=0,powerMode=0,comboTimer=0,comboCount=0,scoreAnim=0,lastShot=0,last=performance.now();
 
 const eduCards=[
@@ -230,6 +231,57 @@ function button(x,y,w,h,t,c){ctx.fillStyle='rgba(0,0,0,.18)';rr(x,y+5,w,h,18);ct
 function wrapText(text,cx,y,maxw,lh){const words=text.split(' ');let line='',yy=y;for(const word of words){const test=line+word+' ';if(ctx.measureText(test).width>maxw&&line){ctx.fillText(line.trim(),cx,yy);line=word+' ';yy+=lh}else line=test}ctx.fillText(line.trim(),cx,yy)}
 function addFloat(t,x,y,c='#064c86',s=20){floats.push({t,x,y,c,s,life:1,max:1})}
 function burst(x,y,c='#ff4fa0',n=12){for(let i=0;i<n;i++)particles.push({x,y,vx:rand(-150,150),vy:rand(-180,120),r:rand(2,6),life:rand(.35,.85),max:.85,c})}
+
+function getDifficulty(){
+  if(score>=4500)return {
+    name:'MODO ÉPICO',
+    enemyChance:.070,
+    minVy:210,
+    maxVy:340,
+    powerChance:.035,
+    shootDelay:230,
+    bossShot:.038,
+    bossHp:58,
+    waveChance:.020
+  };
+
+  if(score>=2500)return {
+    name:'MODO DIFÍCIL',
+    enemyChance:.055,
+    minVy:180,
+    maxVy:290,
+    powerChance:.045,
+    shootDelay:200,
+    bossShot:.030,
+    bossHp:50,
+    waveChance:.014
+  };
+
+  if(score>=1000)return {
+    name:'MODO MEDIO',
+    enemyChance:.042,
+    minVy:150,
+    maxVy:235,
+    powerChance:.060,
+    shootDelay:175,
+    bossShot:.024,
+    bossHp:44,
+    waveChance:.009
+  };
+
+  return {
+    name:'MODO INICIO',
+    enemyChance:.030,
+    minVy:120,
+    maxVy:195,
+    powerChance:.080,
+    shootDelay:150,
+    bossShot:.018,
+    bossHp:40,
+    waveChance:.004
+  };
+}
+
 
 function getRank(value){
   if(value>=6000)return {name:'INMUNIDAD MÁXIMA',color:'#ffcf33',sub:'¡Pusiste el pare al sarampión!'};
@@ -281,8 +333,27 @@ function checkEducationalPopup(){
   }
 }
 
+function checkDifficultyNotice(){
+  if(state!=='playing') return;
 
-function clearGame(){bullets=[];enemies=[];particles=[];floats=[];hitEffects=[];shotEffects=[];boss=null;bossSpawned=false;bossDefeated=false;popup=null;eduUnlocked={};shield=0;x2Timer=0;powerMode=0;comboTimer=0;comboCount=0;shareMsgTimer=0;player.x=W/2;player.targetX=W/2;last=performance.now()}
+  const steps=[
+    {score:1000,text:'¡MODO MEDIO!'},
+    {score:2500,text:'¡MODO DIFÍCIL!'},
+    {score:4500,text:'¡MODO ÉPICO!'}
+  ];
+
+  for(const step of steps){
+    if(score>=step.score && !difficultyShown[step.score]){
+      difficultyShown[step.score]=true;
+      addFloat(step.text,W/2,220,'#ff4fa0',30);
+      burst(W/2,230,'#ffcf33',24);
+      sfx('boss');
+    }
+  }
+}
+
+
+function clearGame(){bullets=[];enemies=[];particles=[];floats=[];hitEffects=[];shotEffects=[];boss=null;bossSpawned=false;bossDefeated=false;popup=null;eduUnlocked={};difficultyShown={};shield=0;x2Timer=0;powerMode=0;comboTimer=0;comboCount=0;shareMsgTimer=0;player.x=W/2;player.targetX=W/2;last=performance.now()}
 function resetAll(){state='cover';score=0;timeLeft=60;level=1;distritoIndex=0;wonDistricts=0;player.hp=3;stopMusic();clearGame()}
 function startGame(){
 score=0;
@@ -308,16 +379,36 @@ bullets=[];
 if(player.hp>0){sfxWin();}else{sfxLose();}
 lowerMusic();
 }
-function shoot(){if(state!=='playing'||popup)return;const now=performance.now();if(now-lastShot<150)return;lastShot=now;sfx('shoot');const shots=powerMode>0?[-30,0,30]:[-16,16];shots.forEach(offset=>{bullets.push({x:player.x+offset,y:player.y+22,vy:-760,r:18,spin:0,trail:[]});shotEffects.push({x:player.x+offset,y:player.y+38,life:.28,max:.28,size:70})});burst(player.x,player.y+35,'#20b8d0',8);burst(player.x,player.y+35,'#ff4fa0',5)}
-function spawnEnemy(){let type=Math.random()>.72?'virus2':'virus1';if(Math.random()>.94)type='power';enemies.push({type,x:rand(55,W-55),y:-70,vx:rand(-55,55),vy:rand(120,195),r:type==='virus2'?32:28})}
+function shoot(){if(state!=='playing'||popup)return;const now=performance.now();const diff=getDifficulty();if(now-lastShot<diff.shootDelay)return;lastShot=now;sfx('shoot');const shots=powerMode>0?[-30,0,30]:[-16,16];shots.forEach(offset=>{bullets.push({x:player.x+offset,y:player.y+22,vy:-760,r:18,spin:0,trail:[]});shotEffects.push({x:player.x+offset,y:player.y+38,life:.28,max:.28,size:70})});burst(player.x,player.y+35,'#20b8d0',8);burst(player.x,player.y+35,'#ff4fa0',5)}
+function spawnEnemy(){
+  const diff=getDifficulty();
+
+  let type=Math.random()>.68?'virus2':'virus1';
+  if(Math.random()<diff.powerChance)type='power';
+
+  const isFast = score>=2500 && Math.random()<.28;
+  const isZigzag = score>=1000 && Math.random()<.35;
+
+  enemies.push({
+    type,
+    x:rand(55,W-55),
+    y:-70,
+    vx:isZigzag?rand(-95,95):rand(-55,55),
+    vy:isFast?rand(diff.maxVy,diff.maxVy+80):rand(diff.minVy,diff.maxVy),
+    r:type==='virus2'?32:28,
+    zig:isZigzag,
+    phase:rand(0,Math.PI*2)
+  });
+}
 function spawnBoss(){
   bossSpawned=true;
+  const diff=getDifficulty();
   boss={
     x:W/2,
     y:215,
     baseY:215,
-    hp:40,
-    max:40,
+    hp:diff.bossHp,
+    max:diff.bossHp,
     phase:0,
     intro:1
   };
@@ -349,10 +440,13 @@ function update(dt){
  if(state!=='playing'||popup)return;
  if(keys.ArrowLeft||keys.a)player.targetX-=420*dt;if(keys.ArrowRight||keys.d)player.targetX+=420*dt;
  player.targetX=clamp(player.targetX,70,W-70);player.x+=(player.targetX-player.x)*.15;timeLeft-=dt;
- if(timeLeft<=18&&!bossSpawned&&!bossDefeated)spawnBoss();if(Math.random()<.03)spawnEnemy();
+ const diff=getDifficulty();
+ if(timeLeft<=18&&!bossSpawned&&!bossDefeated)spawnBoss();
+ if(Math.random()<diff.enemyChance)spawnEnemy();
+ if(score>=2500 && Math.random()<diff.waveChance){spawnEnemy();spawnEnemy();}
  bullets.forEach(b=>{b.trail.push({x:b.x,y:b.y,life:.22,max:.22});if(b.trail.length>8)b.trail.shift();b.y+=b.vy*dt;b.spin+=dt*10;b.trail=b.trail.filter(p=>(p.life-=dt)>0)});bullets=bullets.filter(b=>b.y>-80);
- enemies.forEach(e=>{e.x+=e.vx*dt;e.y+=e.vy*dt;if(e.x<30||e.x>W-30)e.vx*=-1});
- for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(Math.hypot(b.x-e.x,b.y-e.y)<42){bullets.splice(i,1);enemies.splice(j,1);comboTimer=2.2;comboCount++;let pts=x2Timer>0?40:20;if(comboCount>=5)pts*=2;score+=pts;checkEducationalPopup();addFloat('+'+pts,e.x,e.y,'#ffcf33',24);if(comboCount>=5)addFloat('RÁFAGA VACUNA',W/2,170,'#ff4fa0',30);sfx('hit');hitEffects.push({x:e.x,y:e.y,life:.42,max:.42});burst(e.x,e.y,'#ff4fa0',14);break}}}
+ enemies.forEach(e=>{if(e.zig){e.phase+=dt*5;e.x+=Math.sin(e.phase)*95*dt;}e.x+=e.vx*dt;e.y+=e.vy*dt;if(e.x<30||e.x>W-30)e.vx*=-1});
+ for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];for(let j=enemies.length-1;j>=0;j--){const e=enemies[j];if(Math.hypot(b.x-e.x,b.y-e.y)<42){bullets.splice(i,1);enemies.splice(j,1);comboTimer=2.2;comboCount++;let pts=x2Timer>0?40:20;if(comboCount>=5)pts*=2;score+=pts;checkEducationalPopup();checkDifficultyNotice();addFloat('+'+pts,e.x,e.y,'#ffcf33',24);if(comboCount>=5)addFloat('RÁFAGA VACUNA',W/2,170,'#ff4fa0',30);sfx('hit');hitEffects.push({x:e.x,y:e.y,life:.42,max:.42});burst(e.x,e.y,'#ff4fa0',14);break}}}
  if(boss){
    boss.phase+=dt;
    boss.intro=Math.max(0,boss.intro-dt*1.8);
@@ -362,7 +456,7 @@ function update(dt){
    boss.y=boss.baseY+Math.sin(boss.phase*2.4)*12;
 
    // El jefe lanza virus pequeños cada cierto tiempo
-   if(Math.random()<.018){
+   if(Math.random()<getDifficulty().bossShot){
      enemies.push({
        type:'virus2',
        x:boss.x+rand(-60,60),
@@ -380,12 +474,12 @@ function update(dt){
        bullets.splice(i,1);
        boss.hp--;
        score+=5;
-       checkEducationalPopup();
+       checkEducationalPopup();checkDifficultyNotice();
        hitEffects.push({x:b.x,y:b.y,life:.35,max:.35});
        burst(b.x,b.y,'#ff4fa0',8);
        if(boss.hp<=0){
          score+=500;
-         checkEducationalPopup();
+         checkEducationalPopup();checkDifficultyNotice();
          bossDefeated=true;
          sfxWin();
          addFloat('¡BROTE DETENIDO!',W/2,210,'#ffcf33',28);
@@ -997,6 +1091,16 @@ function drawPlaying(){
  ctx.fillStyle='rgba(255,255,255,.96)';rr(26,128,188,40,18);ctx.fill();
  ctx.fillStyle=currentRank.color;ctx.beginPath();ctx.arc(47,148,8,0,Math.PI*2);ctx.fill();
  ctx.fillStyle='#064c86';ctx.font='900 13px Arial';ctx.fillText(currentRank.name,64,153);
+
+ // Indicador de dificultad
+ const diffLabel=getDifficulty();
+ ctx.fillStyle='rgba(255,255,255,.96)';
+ rr(248,128,150,40,18);ctx.fill();
+ ctx.fillStyle=score>=4500?'#ff4fa0':score>=2500?'#b627d8':score>=1000?'#1976d2':'#20b8d0';
+ ctx.beginPath();ctx.arc(268,148,8,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#064c86';
+ ctx.font='900 11px Arial';
+ ctx.fillText(diffLabel.name,285,153);
 
  // Partículas suaves de fondo
  ctx.fillStyle='rgba(32,184,208,.08)';
