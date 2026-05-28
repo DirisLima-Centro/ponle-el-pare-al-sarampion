@@ -107,6 +107,8 @@ animation-delay:4s;
 
 
 
+
+
 }
 
 .bg-cross{
@@ -361,10 +363,11 @@ const popupImgs=[img.popup1,img.popup2,img.popup3,img.popup4,img.popup5];
 const distritos=['San Luis','San Borja','San Isidro','Miraflores','Pueblo Libre','Jesús María','La Victoria','San Juan de Lurigancho','Cercado de Lima','Breña','Magdalena','San Miguel','Lince','Surquillo'];
 
 let state='cover';
-let player={x:W/2,y:H-160,w:135,h:135,targetX:W/2,hp:3};
+let player={x:W/2,y:H-160,w:135,h:135,targetX:W/2,hp:0};
 let bullets=[],enemies=[],particles=[],floats=[],hitEffects=[],shotEffects=[];
 let popup=null,boss=null,bossSpawned=false,bossDefeated=false,keys={};
 let shareMsgTimer=0;
+let immunityMode=0;
 let difficultyShown={};
 let score=0,level=1,distritoIndex=0,wonDistricts=0,timeLeft=60,shield=0,x2Timer=0,powerMode=0,comboTimer=0,comboCount=0,scoreAnim=0,lastShot=0,last=performance.now();
 
@@ -515,15 +518,15 @@ function checkDifficultyNotice(){
 }
 
 
-function clearGame(){bullets=[];enemies=[];particles=[];floats=[];hitEffects=[];shotEffects=[];boss=null;bossSpawned=false;bossDefeated=false;popup=null;eduUnlocked={};difficultyShown={};shield=0;x2Timer=0;powerMode=0;comboTimer=0;comboCount=0;shareMsgTimer=0;player.x=W/2;player.targetX=W/2;last=performance.now()}
-function resetAll(){state='cover';score=0;timeLeft=60;level=1;distritoIndex=0;wonDistricts=0;player.hp=3;stopMusic();clearGame()}
+function clearGame(){bullets=[];enemies=[];particles=[];floats=[];hitEffects=[];shotEffects=[];boss=null;bossSpawned=false;bossDefeated=false;popup=null;eduUnlocked={};difficultyShown={};shield=0;immunityMode=0;x2Timer=0;powerMode=0;comboTimer=0;comboCount=0;shareMsgTimer=0;player.x=W/2;player.targetX=W/2;last=performance.now()}
+function resetAll(){state='cover';score=0;timeLeft=120;level=1;distritoIndex=0;wonDistricts=0;player.hp=0;stopMusic();clearGame()}
 function startGame(){
 score=0;
-timeLeft=60;
+timeLeft=120;
 level=1;
 distritoIndex=0;
 wonDistricts=0;
-player.hp=3;
+player.hp=0;
 clearGame();
 state='playing';
 
@@ -584,7 +587,7 @@ function goToBigVirus(){
   boss=null;
   bossSpawned=false;
   timeLeft=18;
-  if(player.hp<=0)player.hp=3;
+  if(player.hp<0)player.hp=0;
   player.x=W/2;
   player.targetX=W/2;
   spawnBoss();
@@ -595,7 +598,7 @@ function goToBigVirus(){
 function update(dt){
  if(shareMsgTimer>0)shareMsgTimer=Math.max(0,shareMsgTimer-dt);
  if(state==='end'&&scoreAnim<score)scoreAnim+=Math.ceil((score-scoreAnim)/10);
- shield=Math.max(0,shield-dt);x2Timer=Math.max(0,x2Timer-dt);powerMode=Math.max(0,powerMode-dt);comboTimer=Math.max(0,comboTimer-dt);if(comboTimer<=0)comboCount=0;
+ shield=Math.max(0,shield-dt);immunityMode=Math.max(0,immunityMode-dt); x2Timer=Math.max(0,x2Timer-dt);powerMode=Math.max(0,powerMode-dt);comboTimer=Math.max(0,comboTimer-dt);if(comboTimer<=0)comboCount=0;
  particles=particles.filter(p=>(p.life-=dt)>0);particles.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=160*dt});
  floats=floats.filter(f=>(f.life-=dt)>0);floats.forEach(f=>{f.y-=42*dt});
  hitEffects=hitEffects.filter(f=>(f.life-=dt)>0);shotEffects=shotEffects.filter(f=>(f.life-=dt)>0);
@@ -653,8 +656,57 @@ function update(dt){
      }
    }
  }
- for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];if(Math.hypot(player.x-e.x,player.y-e.y)<80){enemies.splice(i,1);if(e.type!=='power'&&shield<=0){player.hp--;sfx('hit');addFloat('¡CUIDADO!',player.x,player.y,'#ff4fa0',24)}else{shield=6;x2Timer=7;powerMode=6;player.hp=Math.min(5,player.hp+1);sfx('power');addFloat('VACUNA SPR',player.x,player.y,'#20b8d0',24);burst(player.x,player.y,'#20b8d0',18);burst(player.x,player.y,'#ff4fa0',12)}if(player.hp<=0){player.hp=0;endGame();return;}}}
- if(timeLeft<=0){endGame();return;}
+ for(let i=enemies.length-1;i>=0;i--){
+   const e=enemies[i];
+
+   if(Math.hypot(player.x-e.x,player.y-e.y)<80){
+     enemies.splice(i,1);
+
+     // Si es vacuna/power-up: suma dosis hasta 3
+     if(e.type==='power'){
+       shield=6;
+       x2Timer=7;
+       powerMode=6;
+       player.hp=Math.min(3,player.hp+1);
+
+       sfx('power');
+       addFloat('VACUNA SPR',player.x,player.y,'#20b8d0',24);
+       burst(player.x,player.y,'#20b8d0',18);
+       burst(player.x,player.y,'#ff4fa0',12);
+
+       // Al completar las 3 dosis, activar celebración visible
+       if(player.hp>=3 && immunityMode<=0){
+         immunityMode=12;
+         shield=12;
+         powerMode=10;
+         x2Timer=Math.max(x2Timer,10);
+
+         sfx('power');
+         setTimeout(()=>sfx('win'),120);
+         setTimeout(()=>sfx('power'),260);
+
+         addFloat('¡INMUNIDAD COMPLETA!',W/2,310,'#ffcf33',34);
+         addFloat('3 DOSIS ACTIVADAS',W/2,350,'#20b8d0',24);
+
+         burst(player.x,player.y+40,'#ffcf33',42);
+         burst(player.x,player.y+40,'#20b8d0',34);
+         burst(player.x,player.y+40,'#ff4fa0',22);
+       }
+     }
+     // Si es virus y no hay escudo: pierde una dosis
+     else if(shield<=0){
+       player.hp=Math.max(0,player.hp-1);
+       sfx('hit');
+       addFloat('¡CUIDADO!',player.x,player.y,'#ff4fa0',24);
+     }
+     // Si hay escudo: bloquea el golpe, pero no suma dosis
+     else{
+       sfx('hit');
+       addFloat('BLOQUEADO',player.x,player.y,'#20b8d0',20);
+       burst(e.x,e.y,'#20b8d0',12);
+     }
+   }
+ } if(timeLeft<=0){endGame();return;}
 }
 
 function drawBase(){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#e9fbff');g.addColorStop(.6,'#fff');g.addColorStop(1,'#dff6ff');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);ctx.fillStyle='#1bb6cf';ctx.beginPath();ctx.arc(-10,45,100,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ff4fa0';ctx.beginPath();ctx.arc(W+10,25,110,0,Math.PI*2);ctx.fill();ctx.fillStyle='rgba(190,50,220,.95)';ctx.fillRect(0,H-78,W,78);ctx.fillStyle='rgba(255,255,255,.95)';rr(16,108,W-32,H-198,24);ctx.fill()}
@@ -1204,16 +1256,31 @@ function drawPlaying(){
  ctx.fillStyle='rgba(255,255,255,.18)';ctx.beginPath();ctx.arc(scoreX+30,scoreY+8,42,0,Math.PI*2);ctx.fill();
  ctx.fillStyle='#ffffff';ctx.font='bold 11px Arial';ctx.textAlign='left';ctx.fillText('Puntaje',scoreX+45,scoreY+18);
  ctx.font='900 25px Arial';ctx.textAlign='center';ctx.shadowColor='rgba(0,0,0,.35)';ctx.shadowBlur=4;ctx.fillText(score,scoreX+82,scoreY+48);ctx.shadowBlur=0;
- ctx.fillStyle='#ffffff';ctx.beginPath();
- const sx=scoreX+24, sy=scoreY+30;
- for(let i=0;i<5;i++){
-   const a=-Math.PI/2+i*2*Math.PI/5;
-   const r=i%2===0?12:5;
-   const x=sx+Math.cos(a)*r;
-   const y=sy+Math.sin(a)*r;
-   if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
- }
- ctx.closePath();ctx.fill();
+ctx.save();
+ctx.translate(scoreX+28,scoreY+30);
+
+ctx.shadowColor='rgba(32,184,208,.9)';
+ctx.shadowBlur=10;
+
+// círculo base
+ctx.fillStyle='rgba(255,255,255,.18)';
+ctx.beginPath();
+ctx.arc(0,0,17,0,Math.PI*2);
+
+ctx.fill();
+
+ctx.strokeStyle='#ffffff';
+ctx.lineWidth=3;
+ctx.beginPath();
+ctx.arc(0,0,14,0,Math.PI*2);
+ctx.stroke();
+
+// cruz médica
+ctx.fillStyle='#ffffff';
+ctx.fillRect(-3,-10,6,20);
+ctx.fillRect(-10,-3,20,6);
+
+ctx.restore();
  ctx.textAlign='left';
 
  // Logo oficial al centro sin distorsión
@@ -1229,8 +1296,39 @@ function drawPlaying(){
  const lifeX=304, lifeY=20, lifeW=104, lifeH=54;
  ctx.fillStyle='rgba(255,255,255,.94)';rr(lifeX,lifeY,lifeW,lifeH,18);ctx.fill();
  ctx.strokeStyle='#ff4fa0';ctx.lineWidth=2;rr(lifeX,lifeY,lifeW,lifeH,18);ctx.stroke();
- ctx.fillStyle='#2c006d';ctx.font='bold 11px Arial';ctx.textAlign='center';ctx.fillText('Vidas',lifeX+lifeW/2,lifeY+17);
- ctx.font='bold 22px Arial';ctx.fillStyle='#ff4fa0';ctx.shadowColor='rgba(255,79,160,.35)';ctx.shadowBlur=4;ctx.fillText('❤'.repeat(Math.max(0,player.hp)),lifeX+lifeW/2,lifeY+43);ctx.shadowBlur=0;ctx.textAlign='left';
+ ctx.fillStyle='#2c006d';ctx.font='bold 11px Arial';ctx.textAlign='center';ctx.fillText('Dosis',lifeX+lifeW/2,lifeY+17);
+ ctx.font='bold 22px Arial';ctx.fillStyle='#ff4fa0';ctx.shadowColor='rgba(255,79,160,.35)';ctx.shadowBlur=4;let dosis='';
+
+if(player.hp>=1)dosis+='💉';
+if(player.hp>=2)dosis+='💉';
+if(player.hp>=3)dosis+='🛡️';
+
+ctx.fillText(dosis,lifeX+lifeW/2,lifeY+43);ctx.shadowBlur=0;
+
+// Aviso visual cuando ya tiene 3 dosis
+if(player.hp>=3){
+  const p=1+Math.sin(t/140)*.05;
+
+  ctx.save();
+  ctx.translate(lifeX+lifeW/2,lifeY+lifeH/2);
+  ctx.scale(p,p);
+  ctx.translate(-(lifeX+lifeW/2),-(lifeY+lifeH/2));
+
+  ctx.shadowColor='rgba(255,207,51,.90)';
+  ctx.shadowBlur=18;
+  ctx.strokeStyle='rgba(255,207,51,.95)';
+  ctx.lineWidth=3;
+  rr(lifeX-2,lifeY-2,lifeW+4,lifeH+4,20);
+  ctx.stroke();
+
+  ctx.fillStyle='rgba(255,207,51,.95)';
+  ctx.font='900 8px Arial';
+  ctx.textAlign='center';
+  ctx.fillText('COMPLETA',lifeX+lifeW/2,lifeY+52);
+  ctx.restore();
+}
+
+ctx.textAlign='left';
 
  // Panel superior de misión: elementos ordenados para que nada choque con el logo ni con el virus gigante
  const hudPanelX=18,hudPanelY=88,hudPanelW=W-36,hudPanelH=146;
@@ -1279,9 +1377,9 @@ function drawPlaying(){
 
  // Barra de tiempo: más abajo, gruesa, con etiqueta encima y sin cruzarse con poderes
  const timeX=50,timeY=151,timeW=W-100,timeH=19;
- const timePct=clamp(timeLeft/60,0,1);
- ctx.fillStyle='#064c86';ctx.font='900 10px Arial';ctx.textAlign='center';
- ctx.fillText('TIEMPO DE MISIÓN',W/2,timeY-9);
+ const timePct=clamp(timeLeft/120,0,1);
+ ctx.fillStyle='#064c86';ctx.font='900 9px Arial';ctx.textAlign='center';
+ ctx.fillText('TIEMPO DE MISIÓN',W/2,timeY-4);
  ctx.save();
  ctx.shadowColor=timePct<.28?'rgba(255,79,160,.55)':'rgba(32,184,208,.45)';ctx.shadowBlur=12;ctx.shadowOffsetY=3;
  ctx.fillStyle='rgba(6,76,134,.14)';rr(timeX,timeY,timeW,timeH,10);ctx.fill();
@@ -1330,11 +1428,34 @@ function drawPlaying(){
  ctx.fillStyle='rgba(255,255,255,.96)';rr(playX,playY,playW,playH,28);ctx.fill();
  ctx.strokeStyle='rgba(6,76,134,.08)';ctx.lineWidth=2;rr(playX,playY,playW,playH,28);ctx.stroke();
 
- // Partículas suaves de fondo
- ctx.fillStyle='rgba(32,184,208,.08)';
- for(let i=0;i<9;i++){
-   ctx.beginPath();ctx.arc(70+i*38,306+((i*67+t/50)%330),3+(i%3),0,Math.PI*2);ctx.fill();
- }
+// Fondo limpio del área de juego: glow + burbujas suaves
+ctx.save();
+
+// Glow central suave
+const softGlow = ctx.createRadialGradient(W/2, 520, 20, W/2, 520, 210);
+softGlow.addColorStop(0,'rgba(32,184,208,.08)');
+softGlow.addColorStop(.55,'rgba(255,79,160,.035)');
+softGlow.addColorStop(1,'rgba(255,255,255,0)');
+
+ctx.fillStyle = softGlow;
+ctx.fillRect(playX, playY, playW, playH);
+
+// Burbujas suaves
+for(let i=0;i<12;i++){
+  const x = playX + 45 + (i*41) % (playW-90);
+  const y = playY + 35 + ((i*83 + t/45) % (playH-70));
+  const r = 3 + (i%4);
+
+  ctx.fillStyle = i%2===0
+    ? 'rgba(32,184,208,.09)'
+    : 'rgba(255,79,160,.045)';
+
+  ctx.beginPath();
+  ctx.arc(x,y,r,0,Math.PI*2);
+  ctx.fill();
+}
+
+ctx.restore();
 
  // Elementos de juego al frente:
  // NO usamos clip aquí para que virus, vacunas y disparos caigan desde arriba
@@ -1437,13 +1558,207 @@ function drawPlaying(){
    ctx.save();ctx.translate(b.x,b.y);ctx.rotate(Math.sin(b.spin)*.035);const pulse=1+Math.sin(b.spin*2)*.05;ctx.scale(pulse,pulse);di(img.f1,-28,-46,56,92);ctx.restore();
  });
 
- // Piso fucsia con textura sutil
- ctx.fillStyle='rgba(190,50,220,.95)';ctx.fillRect(0,H-78,W,78);
- ctx.fillStyle='rgba(255,255,255,.18)';ctx.beginPath();ctx.ellipse(player.x,H-78,92,16,0,0,Math.PI*2);ctx.fill();
+// Piso gamer neon mejorado
+const floorGrad = ctx.createLinearGradient(0,H-78,0,H);
+
+floorGrad.addColorStop(0,'#d946ef');
+floorGrad.addColorStop(.45,'#b627d8');
+floorGrad.addColorStop(1,'#7b1fa2');
+
+ctx.fillStyle = floorGrad;
+ctx.fillRect(0,H-78,W,78);
+
+// Glow superior
+ctx.fillStyle='rgba(255,255,255,.12)';
+ctx.fillRect(0,H-78,W,4);
+
+// Líneas gamer
+ctx.save();
+
+ctx.strokeStyle='rgba(255,255,255,.08)';
+ctx.lineWidth=2;
+
+for(let i=-20;i<W+40;i+=26){
+
+ ctx.beginPath();
+
+ ctx.moveTo(i,H);
+ ctx.lineTo(i+40,H-78);
+
+ ctx.stroke();
+}
+
+ctx.restore();
+
+// Partículas neon
+for(let i=0;i<14;i++){
+
+ ctx.fillStyle=i%2===0
+ ? 'rgba(32,184,208,.22)'
+ : 'rgba(255,255,255,.12)';
+
+ ctx.beginPath();
+
+ ctx.arc(
+   (i*37 + (t/12)) % W,
+   H-20-rand(0,40),
+   rand(1,3),
+   0,
+   Math.PI*2
+ );
+
+ ctx.fill();
+}
+	
+	
 
  // Diky con protección envolvente
- if(shield>0)drawShieldAura(player.x,player.y+68);
+ if(shield>0 || immunityMode>0){
+   drawShieldAura(player.x,player.y+68);
+ }
+
+ // Glow extra detrás de Diky cuando completa 3 dosis
+ if(immunityMode>0){
+   const pulse=1+Math.sin(t/110)*.08;
+
+   ctx.save();
+   ctx.globalAlpha=.70;
+   const glow=ctx.createRadialGradient(player.x,player.y+62,18,player.x,player.y+62,150);
+   glow.addColorStop(0,'rgba(255,207,51,.60)');
+   glow.addColorStop(.42,'rgba(32,184,208,.30)');
+   glow.addColorStop(.72,'rgba(255,79,160,.16)');
+   glow.addColorStop(1,'rgba(255,255,255,0)');
+   ctx.fillStyle=glow;
+   ctx.beginPath();
+   ctx.arc(player.x,player.y+62,130*pulse,0,Math.PI*2);
+   ctx.fill();
+   ctx.restore();
+
+   // Anillos dorados/celestes alrededor del personaje
+   ctx.save();
+   ctx.translate(player.x,player.y+68);
+   for(let i=0;i<3;i++){
+     ctx.rotate(t/700+i);
+     ctx.strokeStyle=i%2===0?'rgba(255,207,51,.85)':'rgba(32,184,208,.75)';
+     ctx.lineWidth=i===0?4:2;
+     ctx.beginPath();
+     ctx.ellipse(0,0,90+i*10,28+i*5,0,0,Math.PI*2);
+     ctx.stroke();
+   }
+   ctx.restore();
+ }
+
  di(img.D1,player.x-player.w/2,player.y,player.w,player.h);
+
+ // Banner premium inmunidad completa
+ if(immunityMode>0){
+
+  const pulse = 1 + Math.sin(t/140)*.035;
+
+  const bannerX = 72;
+  const bannerY = 292;
+  const bannerW = 286;
+  const bannerH = 54;
+
+  ctx.save();
+
+  ctx.translate(
+    bannerX + bannerW/2,
+    bannerY + bannerH/2
+  );
+
+  ctx.scale(pulse,pulse);
+
+  ctx.translate(
+    -(bannerX + bannerW/2),
+    -(bannerY + bannerH/2)
+  );
+
+  // Glow
+  ctx.shadowColor='rgba(255,207,51,.75)';
+  ctx.shadowBlur=22;
+  ctx.shadowOffsetY=4;
+
+  // Fondo premium
+  const grad=ctx.createLinearGradient(
+    bannerX,
+    bannerY,
+    bannerX+bannerW,
+    bannerY
+  );
+
+  grad.addColorStop(0,'#ffcf33');
+  grad.addColorStop(.35,'#20b8d0');
+  grad.addColorStop(.7,'#1976d2');
+  grad.addColorStop(1,'#ff4fa0');
+
+  ctx.fillStyle=grad;
+
+  rr(
+    bannerX,
+    bannerY,
+    bannerW,
+    bannerH,
+    22
+  );
+
+  ctx.fill();
+
+  // Borde
+  ctx.strokeStyle='rgba(255,255,255,.95)';
+  ctx.lineWidth=3;
+
+  rr(
+    bannerX+3,
+    bannerY+3,
+    bannerW-6,
+    bannerH-6,
+    19
+  );
+
+  ctx.stroke();
+
+  // brillo superior
+  ctx.fillStyle='rgba(255,255,255,.20)';
+
+  rr(
+    bannerX+18,
+    bannerY+8,
+    bannerW-36,
+    12,
+    8
+  );
+
+  ctx.fill();
+
+  // texto principal
+  ctx.textAlign='center';
+
+  ctx.shadowColor='rgba(6,76,134,.45)';
+  ctx.shadowBlur=4;
+
+  ctx.fillStyle='#ffffff';
+  ctx.font='900 19px Arial';
+
+  ctx.fillText(
+    '¡INMUNIDAD COMPLETA!',
+    W/2,
+    bannerY+28
+  );
+
+  // subtítulo
+  ctx.fillStyle='#ffcf33';
+  ctx.font='900 10px Arial';
+
+  ctx.fillText(
+    '3 DOSIS ACTIVADAS · PROTECCIÓN MÁXIMA',
+    W/2,
+    bannerY+43
+  );
+
+  ctx.restore();
+  ctx.textAlign='left';
+ }
 
  // Feedback visual encima
  particles.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.c;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();ctx.globalAlpha=1});
