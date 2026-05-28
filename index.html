@@ -110,6 +110,7 @@ animation-delay:4s;
 
 
 
+
 }
 
 .bg-cross{
@@ -207,7 +208,7 @@ z-index:2;
   </aside>
 </div>
 
-<audio id="bgMusic" src="./musica-sarampion.mp3" preload="auto" loop></audio>
+<audio id="bgMusic" src="./musica-sarampion.mp3" preload="auto" loop playsinline webkit-playsinline></audio>
 <script>
 const canvas=document.getElementById('game');
 const ctx=canvas.getContext('2d');
@@ -250,11 +251,22 @@ async function startMusic(){
   try{
     bgMusic.muted = false;
     bgMusic.volume = 0.55;
+    bgMusic.loop = true;
 
-    // Solo reproduce si está pausada, así no se reinicia ni se corta.
-    if(bgMusic.paused){
-	bgMusic.currentTime = 26;
-      await bgMusic.play();
+    // En celulares primero se ejecuta play() dentro del toque del usuario.
+    // Luego recién movemos la canción al segundo 26 para evitar bloqueo móvil.
+    const playPromise = bgMusic.play();
+
+    if(playPromise && typeof playPromise.then === 'function'){
+      await playPromise;
+    }
+
+    try{
+      if(bgMusic.currentTime < 2){
+        bgMusic.currentTime = 26;
+      }
+    }catch(seekErr){
+      console.log('No se pudo mover la música al segundo 26:', seekErr);
     }
 
     console.log('🎵 Música sonando');
@@ -262,7 +274,6 @@ async function startMusic(){
     console.log('❌ Error al reproducir música:', err);
   }
 }
-
 function stopMusic(){
   try{
     bgMusic.pause();
@@ -551,16 +562,8 @@ clearGame();
 state='playing';
 
 // AQUÍ EMPIEZA LA CANCIÓN DEL JUEGO
-ensureAudio();
-
-bgMusic.muted = false;
-bgMusic.volume = 0.55;
-bgMusic.currentTime = 26;
-
-bgMusic.play().catch(err=>{
-  console.log('No se pudo iniciar música:', err);
-});
-
+// Importante: se llama dentro del toque del usuario para que funcione en celular.
+startMusic();
 sfx('power');
 }
 function endGame(){
@@ -1683,6 +1686,7 @@ for(let i=0;i<14;i++){
  // Banner premium inmunidad completa
  if(immunityMode>0){
 
+
   const pulse = 1 + Math.sin(t/140)*.035;
 
   const bannerX = 72;
@@ -2158,7 +2162,12 @@ function press(x,y){
  player.targetX=x;
  shoot();
 }
-canvas.addEventListener('pointerdown',e=>{const p=getPos(e);press(p.x,p.y)});canvas.addEventListener('pointermove',e=>{const p=getPos(e);if(state==='playing')player.targetX=p.x});canvas.addEventListener('touchmove',e=>{e.preventDefault();const p=getPos(e);if(state==='playing'){player.targetX=p.x;shoot()}},{passive:false});
+canvas.addEventListener('pointerdown',e=>{
+  // Desbloqueo extra para celulares Android/iPhone.
+  ensureAudio();
+  const p=getPos(e);
+  press(p.x,p.y);
+});canvas.addEventListener('pointermove',e=>{const p=getPos(e);if(state==='playing')player.targetX=p.x});canvas.addEventListener('touchmove',e=>{e.preventDefault();const p=getPos(e);if(state==='playing'){player.targetX=p.x;shoot()}},{passive:false});
 window.addEventListener('keydown',e=>{
  ensureAudio();
  keys[e.key]=true;
