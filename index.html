@@ -109,6 +109,7 @@ animation-delay:4s;
 
 
 
+
 }
 
 .bg-cross{
@@ -460,16 +461,35 @@ function shareText(){
 }
 async function shareScore(){
   const text=shareText();
+
   try{
-    if(navigator.share){
-      await navigator.share({title:'Ponle el Pare al Sarampión',text});
-    }else if(navigator.clipboard){
-      await navigator.clipboard.writeText(text);
-      shareMsgTimer=2.4;
-    }else{
-      shareMsgTimer=2.4;
-    }
-  }catch(e){}
+    canvas.toBlob(async function(blob){
+      const file = new File(
+        [blob],
+        'resultado-ponle-el-pare.png',
+        {type:'image/png'}
+      );
+
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        await navigator.share({
+          title:'Ponle el Pare al Sarampión',
+          text:text,
+          files:[file]
+        });
+      }else{
+        if(navigator.clipboard){
+          await navigator.clipboard.writeText(text);
+        }
+
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);
+        a.download='resultado-ponle-el-pare.png';
+        a.click();
+      }
+    },'image/png');
+  }catch(e){
+    console.log(e);
+  }
 }
 
 function checkEducationalPopup(){
@@ -1425,6 +1445,7 @@ ctx.textAlign='left';
 
  // Área blanca de juego, más abajo para que el HUD respire y el jefe no tape indicadores
  const playX=20, playY=286, playW=W-40, playH=H-378;
+
  ctx.fillStyle='rgba(255,255,255,.96)';rr(playX,playY,playW,playH,28);ctx.fill();
  ctx.strokeStyle='rgba(6,76,134,.08)';ctx.lineWidth=2;rr(playX,playY,playW,playH,28);ctx.stroke();
 
@@ -2023,6 +2044,7 @@ function drawPopup(){
    const fy=174;
    flyerBottom=fy+dh;
 
+
    ctx.save();
    ctx.shadowColor='rgba(0,0,0,.22)';
    ctx.shadowBlur=16;
@@ -2142,6 +2164,7 @@ window.addEventListener('keydown',e=>{
  if(e.key==='8'){player.hp=5;shield=10;x2Timer=10;powerMode=10}
  if(e.key==='9')score+=5000;
  if(e.key.toLowerCase()==='s'&&state==='end')shareScore();
+
  if(e.key===' ')shoot();
 });
 window.addEventListener('keyup',e=>keys[e.key]=false);
