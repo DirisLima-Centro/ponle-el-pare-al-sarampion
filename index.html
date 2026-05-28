@@ -111,6 +111,7 @@ animation-delay:4s;
 
 
 
+
 }
 
 .bg-cross{
@@ -231,9 +232,13 @@ const GAME_SAFE={
 // ===============================
 const bgMusic = document.getElementById('bgMusic');
 bgMusic.volume = 0.55;
+bgMusic.loop = true;
+bgMusic.setAttribute('playsinline','');
+bgMusic.setAttribute('webkit-playsinline','');
 
 let audioCtx = null;
 let audioUnlocked = false;
+let mobileMusicUnlocked = false;
 
 function ensureAudio(){
   if(!audioCtx){
@@ -245,7 +250,7 @@ function ensureAudio(){
   audioUnlocked = true;
 }
 
-async function startMusic(){
+async function unlockMobileMusic(){
   ensureAudio();
 
   try{
@@ -253,27 +258,45 @@ async function startMusic(){
     bgMusic.volume = 0.55;
     bgMusic.loop = true;
 
-    // En celulares primero se ejecuta play() dentro del toque del usuario.
-    // Luego recién movemos la canción al segundo 26 para evitar bloqueo móvil.
-    const playPromise = bgMusic.play();
-
-    if(playPromise && typeof playPromise.then === 'function'){
-      await playPromise;
-    }
-
-    try{
-      if(bgMusic.currentTime < 2){
-        bgMusic.currentTime = 26;
+    // En móvil el play() debe ejecutarse directamente después de un toque/click del usuario.
+    if(bgMusic.paused){
+      const playPromise = bgMusic.play();
+      if(playPromise && typeof playPromise.then === 'function'){
+        await playPromise;
       }
-    }catch(seekErr){
-      console.log('No se pudo mover la música al segundo 26:', seekErr);
     }
 
-    console.log('🎵 Música sonando');
+    // Saltar al segundo 26 cuando el navegador ya tenga metadata.
+    const goToMusicStart = ()=>{
+      try{
+        if(bgMusic.duration && bgMusic.currentTime < 2){
+          bgMusic.currentTime = Math.min(26, Math.max(0, bgMusic.duration - 1));
+        }
+      }catch(e){}
+    };
+
+    if(bgMusic.readyState >= 1){
+      goToMusicStart();
+    }else{
+      bgMusic.addEventListener('loadedmetadata', goToMusicStart, {once:true});
+    }
+
+    mobileMusicUnlocked = true;
+    console.log('🎵 Música desbloqueada en móvil');
   }catch(err){
-    console.log('❌ Error al reproducir música:', err);
+    console.log('Audio bloqueado en móvil:', err);
   }
 }
+
+// Primer toque en celular: desbloquea la música antes de iniciar el juego.
+document.addEventListener('touchstart', unlockMobileMusic, {once:true, passive:true});
+document.addEventListener('pointerdown', unlockMobileMusic, {once:true, passive:true});
+document.addEventListener('click', unlockMobileMusic, {once:true});
+
+async function startMusic(){
+  return unlockMobileMusic();
+}
+
 function stopMusic(){
   try{
     bgMusic.pause();
@@ -562,8 +585,8 @@ clearGame();
 state='playing';
 
 // AQUÍ EMPIEZA LA CANCIÓN DEL JUEGO
-// Importante: se llama dentro del toque del usuario para que funcione en celular.
-startMusic();
+// Importante: se llama dentro del toque/click del usuario para que funcione en celular.
+unlockMobileMusic();
 sfx('power');
 }
 function endGame(){
@@ -1828,6 +1851,7 @@ function drawEnd(){
  ctx.stroke();
 
  // Logo superior
+
  ctx.save();
  ctx.translate(W/2,118);
  ctx.scale(1+Math.sin(t/420)*.018,1+Math.sin(t/420)*.018);
