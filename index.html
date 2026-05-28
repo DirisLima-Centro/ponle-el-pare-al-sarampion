@@ -551,7 +551,16 @@ clearGame();
 state='playing';
 
 // AQUÍ EMPIEZA LA CANCIÓN DEL JUEGO
-startMusic();
+ensureAudio();
+
+bgMusic.muted = false;
+bgMusic.volume = 0.55;
+bgMusic.currentTime = 26;
+
+bgMusic.play().catch(err=>{
+  console.log('No se pudo iniciar música:', err);
+});
+
 sfx('power');
 }
 function endGame(){
